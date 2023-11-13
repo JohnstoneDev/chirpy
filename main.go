@@ -26,7 +26,12 @@ func main(){
 	fs := http.FileServer(http.Dir("."))
 	mux := http.NewServeMux()
 
+	// serve assets
+	assets := http.FileServer(http.Dir("/assets"))
+
 	mux.Handle("/", fs)
+	mux.Handle("/assets", assets)
+
 	indexServer := http.Server {
 		Addr: ":8080",
 		Handler: middlewareCors(mux) ,
