@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "fmt"
 	"log"
 	"net/http"
 )
@@ -22,18 +21,20 @@ func middlewareCors(next http.Handler) http.Handler {
 
 
 func main(){
+
+	// create a file server
+	fs := http.FileServer(http.Dir("."))
 	mux := http.NewServeMux()
-	corsMux := middlewareCors(mux)
 
-	// server that uses the corsMux as the handler
-	server :=  http.Server{
-		Addr: ":3000",
-		Handler: corsMux,
+	mux.Handle("/", fs)
+	indexServer := http.Server {
+		Addr: ":8080",
+		Handler: middlewareCors(mux) ,
 	}
 
-	// listen for request on the server
-	if err := server.ListenAndServe(); err != nil {
-		log.Panic(err)
-		return
+	log.Println("Listening on port 8080")
+	if err := indexServer.ListenAndServe(); err != nil {
+		log.Fatal(err)
 	}
+
 }
