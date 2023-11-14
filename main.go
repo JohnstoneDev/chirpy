@@ -19,6 +19,9 @@ func main(){
 	// chi router
 	router := chi.NewRouter()
 
+	// API router for non-website requests
+	apiRouter := chi.NewRouter()
+
 	// create a file server
 	fs := http.FileServer(http.Dir(filePathRoot))
 
@@ -27,9 +30,12 @@ func main(){
 	fsHandler := http.StripPrefix("/app/", fs)
 	appHandler := http.StripPrefix("/app", fs)
 
-	router.Get("/healthz", handlerReadiness) 	// Restricted to GET only
-	router.Handle("/metrics", apiCfg.reportMetrics(fsHandler))
-	router.Handle("/reset", apiCfg.middlewareResetInfo(fs))
+	apiRouter.Get("/healthz", handlerReadiness) 	// Restricted to GET only
+	apiRouter.Handle("/metrics", apiCfg.reportMetrics(fsHandler))
+	apiRouter.Handle("/reset", apiCfg.middlewareResetInfo(fs))
+
+	// Mount the api router to the /api path
+	router.Mount("/api", apiRouter)
 
 	router.Handle("/app", apiCfg.middlewareMetricsInc(appHandler))
 	router.Handle("/app/*", apiCfg.middlewareMetricsInc(fsHandler))
