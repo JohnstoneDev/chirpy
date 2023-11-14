@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func main(){
@@ -14,24 +16,28 @@ func main(){
 		fileserverHits: 0,
 	}
 
+	// chi router
+	router := chi.NewRouter()
+
 	// create a file server
 	fs := http.FileServer(http.Dir(filePathRoot))
-	mux := http.NewServeMux()
 
 	// serve assets
 	assets := http.FileServer(http.Dir("/assets"))
 	fsHandler := http.StripPrefix("/app/", fs)
+	appHandler := http.StripPrefix("/app", fs)
 
-	mux.Handle("/reset", apiCfg.middlewareResetInfo(fs))
-	mux.Handle("/metrics", apiCfg.reportMetrics(fs))
+	router.Get("/healthz", handlerReadiness) 	// Restricted to GET only
+	router.Handle("/metrics", apiCfg.reportMetrics(fsHandler))
+	router.Handle("/reset", apiCfg.middlewareResetInfo(fs))
 
-	mux.Handle("/app/", apiCfg.middlewareMetricsInc(fsHandler))
-	mux.Handle("/assets/", http.StripPrefix("/assets/", assets))
-	mux.HandleFunc("/healthz", handlerReadiness)
+	router.Handle("/app", apiCfg.middlewareMetricsInc(appHandler))
+	router.Handle("/app/*", apiCfg.middlewareMetricsInc(fsHandler))
+	router.Handle("/assets/", http.StripPrefix("/assets/", assets))
 
 	indexServer := &http.Server {
 		Addr: ":8080",
-		Handler: middlewareCors(mux) ,
+		Handler: middlewareCors(router) ,
 	}
 
 	log.Println("Listening on port 8080")
