@@ -1,19 +1,20 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/JohnstoneDev/chirpy/internal/helpers"
 )
+
 
 func main(){
 	const filePathRoot = "."
 
 	// Create config for caching
-	apiCfg := &apiConfig{
-		fileserverHits: 0,
+	apiCfg := &helpers.ApiConfig{
+		FileServerHits: 0,
 	}
 
 	// chi router
@@ -22,6 +23,9 @@ func main(){
 	// API router for non-website requests
 	apiRouter := chi.NewRouter()
 
+	// admin router
+	adminRouter := chi.NewRouter()
+
 	// create a file server
 	fs := http.FileServer(http.Dir(filePathRoot))
 
@@ -29,16 +33,19 @@ func main(){
 	assets := http.FileServer(http.Dir("/assets"))
 	fsHandler := http.StripPrefix("/app/", fs)
 	appHandler := http.StripPrefix("/app", fs)
+	adminHandler := http.StripPrefix("/admin", fs)
 
+
+	adminRouter.Handle("/metrics", apiCfg.ReportMetrics(adminHandler))
 	apiRouter.Get("/healthz", handlerReadiness) 	// Restricted to GET only
-	apiRouter.Handle("/metrics", apiCfg.reportMetrics(fsHandler))
-	apiRouter.Handle("/reset", apiCfg.middlewareResetInfo(fs))
+	apiRouter.Handle("/reset", apiCfg.MiddlewareResetInfo(fs))
 
 	// Mount the api router to the /api path
 	router.Mount("/api", apiRouter)
+	router.Mount("/admin", adminRouter)
 
-	router.Handle("/app", apiCfg.middlewareMetricsInc(appHandler))
-	router.Handle("/app/*", apiCfg.middlewareMetricsInc(fsHandler))
+	router.Handle("/app", apiCfg.MiddlewareMetricsInc(appHandler))
+	router.Handle("/app/*", apiCfg.MiddlewareMetricsInc(fsHandler))
 	router.Handle("/assets/", http.StripPrefix("/assets/", assets))
 
 	indexServer := &http.Server {
@@ -57,50 +64,6 @@ func handlerReadiness(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
-}
-
-type apiConfig struct {
-	fileserverHits int
-}
-
-// middleware to report metrics
-func (config *apiConfig) reportMetrics (next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		metrics := config.fileserverHits
-
-		value := fmt.Sprintf("Hits: %v \n", metrics)
-
-		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.Write([]byte(value))
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-// middleware to increment fileserver hits
-func (config *apiConfig) middlewareMetricsInc (next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		config.fileserverHits++
-		hits := config.fileserverHits
-		text := fmt.Sprintf("Hits: %v \n", hits)
-
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(text))
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-// middleware tpo reset fileserver metrics
-func (config *apiConfig) middlewareResetInfo (next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		config.fileserverHits = 0
-
-		w.WriteHeader(http.StatusOK)
-		next.ServeHTTP(w, r)
-	})
 }
 
 // middleware function that adds CORS headers to the response

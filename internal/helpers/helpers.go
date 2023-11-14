@@ -5,14 +5,14 @@ import (
 	"net/http"
 )
 
-type apiConfig struct {
-	fileserverHits int
+type ApiConfig struct {
+	FileServerHits int
 }
 
 // middleware to report metrics
-func (config *apiConfig) reportMetrics (next http.Handler) http.Handler {
+func (config *ApiConfig) ReportMetrics (next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		metrics := config.fileserverHits
+		metrics := config.FileServerHits
 
 		value := fmt.Sprintf("Hits: %v \n", metrics)
 
@@ -25,10 +25,10 @@ func (config *apiConfig) reportMetrics (next http.Handler) http.Handler {
 }
 
 // middleware to increment fileserver hits
-func (config *apiConfig) middlewareMetricsInc (next http.Handler) http.Handler {
+func (config *ApiConfig) MiddlewareMetricsInc (next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		config.fileserverHits++
-		hits := config.fileserverHits
+		config.FileServerHits++
+		hits := config.FileServerHits
 		text := fmt.Sprintf("Hits: %v \n", hits)
 
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -40,9 +40,9 @@ func (config *apiConfig) middlewareMetricsInc (next http.Handler) http.Handler {
 }
 
 // middleware tpo reset fileserver metrics
-func (config *apiConfig) middlewareResetInfo (next http.Handler) http.Handler {
+func (config *ApiConfig) MiddlewareResetInfo (next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		config.fileserverHits = 0
+		config.FileServerHits = 0
 
 		w.WriteHeader(http.StatusOK)
 		next.ServeHTTP(w, r)
