@@ -28,21 +28,26 @@ func main(){
 
 	// create a file server
 	fs := http.FileServer(http.Dir(filePathRoot))
+	adminFs := http.FileServer(http.Dir("/admin"))
 
 	// serve assets
 	assets := http.FileServer(http.Dir("/assets"))
 	fsHandler := http.StripPrefix("/app/", fs)
 	appHandler := http.StripPrefix("/app", fs)
-	adminHandler := http.StripPrefix("/admin", fs)
 
+	adminRootHandler := http.StripPrefix("/admin/", adminFs)
+	adminHandler := http.StripPrefix("/admin", adminFs)
 
 	adminRouter.Handle("/metrics", apiCfg.ReportMetrics(adminHandler))
+	adminRouter.Handle("/admin", apiCfg.ReportMetrics(adminRootHandler))
+
+
 	apiRouter.Get("/healthz", handlerReadiness) 	// Restricted to GET only
 	apiRouter.Handle("/reset", apiCfg.MiddlewareResetInfo(fs))
 
 	// Mount the api router to the /api path
 	router.Mount("/api", apiRouter)
-	router.Mount("/admin", adminRouter)
+	router.Mount("/admin/", adminRouter)
 
 	router.Handle("/app", apiCfg.MiddlewareMetricsInc(appHandler))
 	router.Handle("/app/*", apiCfg.MiddlewareMetricsInc(fsHandler))

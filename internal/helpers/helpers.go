@@ -3,6 +3,7 @@ package helpers
 import (
 	"fmt"
 	"net/http"
+	_ "text/template"
 )
 
 type ApiConfig struct {
@@ -12,13 +13,22 @@ type ApiConfig struct {
 // middleware to report metrics
 func (config *ApiConfig) ReportMetrics (next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		metrics := config.FileServerHits
 
-		value := fmt.Sprintf("Hits: %v \n", metrics)
+		// html template
+		htmlContent := `
+			<html>
+				<body>
+					<h1>Welcome, Chirpy Admin</h1>
+					<p>Chirpy has been visited %d times!</p>
+				</body>
+			</html>
+		`
+
+		htmlContent = fmt.Sprintf(htmlContent, config.FileServerHits)
 
 		w.WriteHeader(http.StatusOK)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte(value))
+		w.Write([]byte(htmlContent))
 
 		next.ServeHTTP(w, r)
 	})
@@ -31,7 +41,7 @@ func (config *ApiConfig) MiddlewareMetricsInc (next http.Handler) http.Handler {
 		hits := config.FileServerHits
 		text := fmt.Sprintf("Hits: %v \n", hits)
 
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(text))
 
