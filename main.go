@@ -1,11 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/JohnstoneDev/chirpy/internal/helpers"
+	"github.com/go-chi/chi/v5"
 )
 
 
@@ -41,13 +42,13 @@ func main(){
 	adminRouter.Handle("/metrics", apiCfg.ReportMetrics(adminHandler))
 	adminRouter.Handle("/admin", apiCfg.ReportMetrics(adminRootHandler))
 
-
 	apiRouter.Get("/healthz", handlerReadiness) 	// Restricted to GET only
+	apiRouter.Post("/validate_chirp", validateChirpHandler)
 	apiRouter.Handle("/reset", apiCfg.MiddlewareResetInfo(fs))
 
 	// Mount the api router to the /api path
 	router.Mount("/api", apiRouter)
-	router.Mount("/admin/", adminRouter)
+	router.Mount("/admin", adminRouter)
 
 	router.Handle("/app", apiCfg.MiddlewareMetricsInc(appHandler))
 	router.Handle("/app/*", apiCfg.MiddlewareMetricsInc(fsHandler))
@@ -69,6 +70,62 @@ func handlerReadiness(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
+}
+
+// validate chirp POST handler
+func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
+	type Received struct {
+		Body string `json:"body"`
+	}
+
+	type ErrorResponse struct {
+		Error string
+	}
+
+	type validResp struct {
+		Valid bool
+	}
+
+	resp := ErrorResponse{
+		Error: "Something went wrong",
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	parameters := Received{
+		Body: "",
+	}
+
+ 	err := decoder.Decode(&parameters)
+	if err != nil {
+		log.Println("Error decoding parameters")
+
+		w.WriteHeader(http.StatusBadRequest)
+		data, _  := json.Marshal(resp)
+		w.Write(data)
+
+		return
+	}
+
+	// parameters is populated successfully
+	if len(parameters.Body) > 140 {
+		w.WriteHeader(http.StatusBadRequest)
+		data, _ := json.Marshal(ErrorResponse{
+			Error: "Chirp is too long",
+		})
+
+		w.Write(data)
+		return
+
+	}
+
+	data, _ := json.Marshal(validResp{
+		Valid : true,
+	})
+
+	// the request body to return
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(data)
 }
 
 // middleware function that adds CORS headers to the response
