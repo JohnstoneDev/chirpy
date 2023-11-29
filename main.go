@@ -79,11 +79,11 @@ func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type ErrorResponse struct {
-		Error string
+		Error string `json:"error"`
 	}
 
 	type validResp struct {
-		Valid bool
+		Cleaned_body string `json:"cleaned_body"`
 	}
 
 	resp := ErrorResponse{
@@ -91,17 +91,18 @@ func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	decoder := json.NewDecoder(r.Body)
-	parameters := Received{
-		Body: "",
-	}
+	parameters := Received{}
 
  	err := decoder.Decode(&parameters)
 	if err != nil {
-		log.Println("Error decoding parameters")
-
+		log.Println("Error decoding parameters:", err)
 		w.WriteHeader(http.StatusBadRequest)
-		data, _  := json.Marshal(resp)
-		w.Write(data)
+
+		if data, err  := json.Marshal(resp); err == nil {
+			w.Write(data)
+		} else {
+			log.Println("Error marshaling response:", err)
+		}
 
 		return
 	}
@@ -109,17 +110,20 @@ func validateChirpHandler(w http.ResponseWriter, r *http.Request) {
 	// parameters is populated successfully
 	if len(parameters.Body) > 140 {
 		w.WriteHeader(http.StatusBadRequest)
+
 		data, _ := json.Marshal(ErrorResponse{
 			Error: "Chirp is too long",
 		})
 
 		w.Write(data)
-		return
 
+		return
 	}
 
+	cleanResponse := helpers.ReplaceProfanity(parameters.Body)
+
 	data, _ := json.Marshal(validResp{
-		Valid : true,
+		Cleaned_body: cleanResponse,
 	})
 
 	// the request body to return

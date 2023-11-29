@@ -61,7 +61,7 @@ func (config *ApiConfig) MiddlewareResetInfo (next http.Handler) http.Handler {
 }
 
 
-func ReplaceProfanity  (input string) string {
+func ReplaceProfanity (input string) string {
 	profane := []string{"kerfuffle", "sharbert", "fornax"}
 	var returnString string
 
