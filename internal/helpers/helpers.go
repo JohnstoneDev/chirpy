@@ -3,6 +3,7 @@ package helpers
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	_ "text/template"
 )
 
@@ -57,4 +58,23 @@ func (config *ApiConfig) MiddlewareResetInfo (next http.Handler) http.Handler {
 		w.WriteHeader(http.StatusOK)
 		next.ServeHTTP(w, r)
 	})
+}
+
+
+func ReplaceProfanity  (input string) string {
+	profane := []string{"kerfuffle", "sharbert", "fornax"}
+	var returnString string
+
+	words := strings.Split(input, " ")
+
+	for _, word := range words {
+		for _, prof := range profane {
+			if strings.EqualFold(prof, word) {
+				word = "****"
+			}
+		}
+		returnString += word + " "
+	}
+
+	return strings.TrimSpace(returnString)
 }
